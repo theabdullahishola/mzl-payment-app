@@ -19,8 +19,8 @@ jobs:
           go-version: '1.21'
 
       - name: Run Prisma Migration
-        # We added -mod=mod here to bypass the vendor folder
-       run: go run -mod=mod github.com/steebchen/prisma-client-go db push --skip-generate
+       
+        run: go run -mod=mod github.com/steebchen/prisma-client-go db push --skip-generate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
