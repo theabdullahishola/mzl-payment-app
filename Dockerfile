@@ -6,12 +6,14 @@ WORKDIR /app
 ENV GOPROXY=https://proxy.golang.org,direct
 
 COPY go.mod go.sum ./
-#COPY vendor ./vendor
 
 COPY prisma ./prisma
-#RUN go run -mod=vendor github.com/steebchen/prisma-client-go generate
+
 
 COPY . .
+
+
+RUN rm -rf vendor
 
 
 RUN go run -mod=mod github.com/steebchen/prisma-client-go generate
@@ -19,17 +21,9 @@ RUN go run -mod=mod github.com/steebchen/prisma-client-go generate
 
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=mod -o main ./cmd/server/main.go
 
-
 FROM alpine:latest
-
 WORKDIR /app
-
 RUN apk --no-cache add ca-certificates
-
-
 COPY --from=builder /app/main .
-
-
 EXPOSE 8080
-
 CMD ["./main"]
