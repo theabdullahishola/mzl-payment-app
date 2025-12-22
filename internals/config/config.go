@@ -13,7 +13,6 @@ type Config struct {
 	JWTSecret           string
 	PAYSTACK_SECRET_KEY string
 	REDIS_URL string
-	REDIS_KEY string
 }
 
 func Load() *Config {
@@ -27,7 +26,6 @@ func Load() *Config {
 		JWTSecret:           getEnv("JWT_ACCESS_SECRET", "super-secret"),
 		PAYSTACK_SECRET_KEY: getEnv("PAYSTACK_SECRET_KEY", ""),
 		REDIS_URL:getEnv("REDIS_URL",""),
-		REDIS_KEY: getEnv("REDIS_PASSWORD",""),
 	}
 }
 

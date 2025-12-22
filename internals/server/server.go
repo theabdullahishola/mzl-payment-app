@@ -48,7 +48,7 @@ func New(cfg *config.Config, dbClient *db.PrismaClient) *Server {
 
 	paystack := service.NewClient(config.Load().PAYSTACK_SECRET_KEY)
 	authmid := middlewares.NewAuthMiddleware(cfg)
-	redisSvc, err := pkg.NewRedisQueue(config.Load().REDIS_URL, config.Load().REDIS_KEY, logger)
+	redisSvc, err := pkg.NewRedisQueue(config.Load().REDIS_URL, logger)
 	if err != nil {
 		return nil
 	}

@@ -24,24 +24,30 @@ type RedisQueue struct {
 	logger         *slog.Logger
 }
 
-func NewRedisQueue(addr, password string, logger *slog.Logger) (*RedisQueue, error) {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
-	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+func NewRedisQueue(url string, logger *slog.Logger) (*RedisQueue, error) {
+    
+    opts, err := redis.ParseURL(url)
+    if err != nil {
+        return nil, fmt.Errorf("invalid redis url: %w", err)
+    }
 
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to redis: %w", err)
-	}
+    rdb := redis.NewClient(opts)
 
-	return &RedisQueue{
-		client: rdb,
-		logger: logger,
-	}, nil
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    if err := rdb.Ping(ctx).Err(); err != nil {
+        return nil, fmt.Errorf("failed to connect to redis: %w", err)
+    }
+
+    return &RedisQueue{
+        client: rdb,
+        logger: logger,
+    }, nil
 }
+
+
 
 func (q *RedisQueue) SetPaymentService(svc service.PaymentService) {
 	q.paymentService = svc
