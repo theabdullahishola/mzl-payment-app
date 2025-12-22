@@ -29,13 +29,13 @@ type WalletService interface {
 }
 
 type WithdrawalRequest struct {
-	Amount        float64
-	AccountNumber string
-	AccountName   string
-	BankCode      string
-	Currency      string
-	Pin           string
-	Reason        string
+    Amount        float64 `json:"amount"`
+    AccountNumber string  `json:"account_number"`
+    AccountName   string  `json:"account_name"`
+    BankCode      string  `json:"bank_code"`
+    Currency      string  `json:"currency"`
+    Pin           string  `json:"pin"`
+    Reason        string  `json:"reason"`
 }
 
 type walletService struct {

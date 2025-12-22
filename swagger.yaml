@@ -64,7 +64,6 @@ security:
   - BearerAuth: []
 
 paths:
-  # --- AUTHENTICATION ---
   /auth/register:
     post:
       summary: Register a new user
