@@ -6,7 +6,7 @@ WORKDIR /app
 ENV GOPROXY=https://proxy.golang.org,direct
 
 COPY go.mod go.sum ./
-COPY vendor ./vendor
+#COPY vendor ./vendor
 
 COPY prisma ./prisma
 #RUN go run -mod=vendor github.com/steebchen/prisma-client-go generate

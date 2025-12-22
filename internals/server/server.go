@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -47,7 +48,7 @@ func New(cfg *config.Config, dbClient *db.PrismaClient) *Server {
 
 	paystack := service.NewClient(config.Load().PAYSTACK_SECRET_KEY)
 	authmid := middlewares.NewAuthMiddleware(cfg)
-	redisSvc, err := pkg.NewRedisQueue(config.Load().REDIS_URL, config.Load().REDIS_KEY,logger)
+	redisSvc, err := pkg.NewRedisQueue(config.Load().REDIS_URL, config.Load().REDIS_KEY, logger)
 	if err != nil {
 		return nil
 	}
@@ -123,7 +124,7 @@ func (s *Server) closeDB() {
 func (s *Server) CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		w.Header().Set("Access-Control-Allow-Origin", fmt.Sprintf("http://localhost:5173, %s", os.Getenv("FRONT_END_URL")))
 
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
@@ -142,7 +143,7 @@ func (s *Server) CORSMiddleware(next http.Handler) http.Handler {
 func (s *Server) RateLimit(limit int, window time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			
+
 			s.AuthMiddleware.RateLimitHandler(next, &pkg.RedisQueue{}, limit, window).ServeHTTP(w, r)
 		})
 	}
