@@ -14,8 +14,10 @@ COPY prisma ./prisma
 COPY . .
 
 
-# NEW (Forces use of the offline vendor folder)
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o main ./cmd/server/main.go
+RUN go run -mod=mod github.com/steebchen/prisma-client-go generate
+
+
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=mod -o main ./cmd/server/main.go
 
 
 FROM alpine:latest
