@@ -1,0 +1,245 @@
+openapi: 3.0.0
+info:
+  title: MZL Payment API
+  description: API documentation for the MZL Cross-Border Payment System.
+  version: 1.0.0
+servers:
+  - url: https://mzl-production.up.railway.app/api/v1
+    description: Production Server
+  - url: http://localhost:8080/api/v1
+    description: Local Development
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        has_pin:
+          type: boolean
+    
+    Wallet:
+      type: object
+      properties:
+        id:
+          type: string
+        account_number:
+          type: string
+        balance:
+          type: number
+          format: float
+    
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: number
+        type:
+          type: string
+          enum: [DEPOSIT, WITHDRAWAL, TRANSFER, SWAP]
+        status:
+          type: string
+          enum: [SUCCESS, PENDING, FAILED]
+        reference:
+          type: string
+
+security:
+  - BearerAuth: []
+
+paths:
+  # --- AUTHENTICATION ---
+  /auth/register:
+    post:
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 6 }
+                name: { type: string }
+      responses:
+        201:
+          description: User created successfully
+
+  /auth/login:
+    post:
+      summary: Login user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        200:
+          description: Login successful (returns Access Token + Set-Cookie)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+
+  /auth/refresh:
+    post:
+      summary: Refresh Access Token
+      description: Uses the HttpOnly cookie 'refresh_token' to get a new access token.
+      security: 
+        - CookieAuth: []
+      responses:
+        200:
+          description: New Access Token generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+
+  /auth/pin:
+    post:
+      summary: Set Transaction PIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pin]
+              properties:
+                pin: { type: string, minLength: 4, maxLength: 4 }
+      responses:
+        200:
+          description: PIN set successfully
+
+  # --- USER & WALLET ---
+  /user:
+    get:
+      summary: Get User Profile
+      responses:
+        200:
+          description: Profile data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /user/lookup:
+    get:
+      summary: Lookup User by Account/Email
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          required: true
+          description: Email or Account Number
+      responses:
+        200:
+          description: User found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  account_number: { type: string }
+
+  /wallet:
+    get:
+      summary: Get Wallet Balance & Assets
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account_number: { type: string }
+                  assets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        currency: { type: string }
+                        balance: { type: number }
+
+  /wallet/transfer:
+    post:
+      summary: Transfer Funds (Internal)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipient_account, amount, currency, pin]
+              properties:
+                recipient_account: { type: string }
+                amount: { type: number }
+                currency: { type: string, default: "NGN" }
+                pin: { type: string }
+                description: { type: string }
+      responses:
+        200:
+          description: Transfer successful
+
+  /wallet/withdraw:
+    post:
+      summary: Withdraw to Bank (External)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, bank_code, account_number, pin]
+              properties:
+                amount: { type: number }
+                account_number: { type: string }
+                bank_code: { type: string }
+                pin: { type: string }
+      responses:
+        200:
+          description: Withdrawal initiated
+
+  /rates:
+    get:
+      summary: Get FX Rates
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  USD: { type: number, example: 1650.00 }
