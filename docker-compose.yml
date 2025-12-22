@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: mzl_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    # We remove the public port 5432 to force everything through PgBouncer
+    healthcheck: 
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  pgbouncer:
+    image: edoburu/pgbouncer
+    container_name: mzl_pgbouncer
+    restart: always
+    environment:
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - MAX_CLIENT_CONN=1000   # How many app connections to allow
+      - DEFAULT_POOL_SIZE=20   # Real connections to the actual DB
+      - POOL_MODE=transaction  # BEST FOR GO/PRISMA: releases connection after each transaction
+      - AUTH_TYPE=any          # Simplified for local, use 'md5' + userlist for production
+    ports:
+      - "6432:6432"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  redis:
+    image: redis:alpine
+    container_name: payment_redis
+    ports:
+      - "6379:6379"
+    healthcheck: 
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mzl_backend:
+    build:
+      context: .
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      redis:
+        condition: service_healthy 
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      # IMPORTANT: Point DATABASE_URL to pgbouncer, not db
+      # Added ?pgbouncer=true so Prisma knows how to handle the connection pool
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@pgbouncer:6432/${DB_NAME}?pgbouncer=true
+      - REDIS_URL=redis:6379
+      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+
+  mzl_frontend:
+    build:
+      context: ../mzl-frontend
+      dockerfile: Dockerfile
+    container_name: mzl_frontend_container
+    depends_on:
+      - mzl_backend
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:

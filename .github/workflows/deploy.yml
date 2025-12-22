@@ -1,0 +1,32 @@
+name: MZL Payment Deploy
+
+on:
+  push:
+    branches: [ main ] 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /app/mzl-payment-app
+        
+            git pull origin main
+            
+            # 2. Build the new Docker images
+            docker-compose build mzl_backend
+            docker-compose run --rm mzl_backend go run github.com/steebchen/prisma-client-go db push
+            
+
+            docker-compose up -d --remove-orphans
+            
+            docker system prune -f

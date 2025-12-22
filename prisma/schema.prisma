@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "go run github.com/steebchen/prisma-client-go"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  //url      = env("DATABASE_URL")
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  SWAP
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id             String  @id @default(uuid())
+  email          String  @unique
+  password       String
+  name           String
+  transactionPin String?
+  wallet         Wallet?
+
+  refreshTokens RefreshToken[]
+}
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique 
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Wallet {
+  id            String        @id @default(uuid())
+  accountNumber String        @unique
+  user          User          @relation(fields: [userId], references: [id])
+  userId        String        @unique
+  assets        WalletAsset[]
+  createdAt     DateTime      @default(now())
+
+  transactions Transaction[]
+}
+
+model WalletAsset {
+  id       String @id @default(uuid())
+  wallet   Wallet @relation(fields: [walletId], references: [id])
+  walletId String
+  currency String
+  balance  Float  @default(0.00)
+
+  // A wallet cannot have two "NGN" assets
+  @@unique([walletId, currency])
+}
+
+model Transaction {
+  id String @id @default(uuid())
+
+  wallet   Wallet @relation(fields: [walletId], references: [id])
+  walletId String
+
+  amount   Float
+  currency String // "NGN", "USD"
+  type     TransactionType // DEPOSIT
+  status   TransactionStatus @default(PENDING)
+
+  reference   String   @unique // handles unique payment reference: idempotency
+  description String?
+  provider    String?
+  gatewayRef  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
