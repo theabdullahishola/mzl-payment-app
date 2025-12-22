@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "go run github.com/steebchen/prisma-client-go"
+ provider = "go run -mod=mod github.com/steebchen/prisma-client-go"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
