@@ -81,7 +81,7 @@ func (s *Server) setRefreshCookie(w http.ResponseWriter, refreshToken string) {
 		MaxAge:   7 * 24 * 60 * 60,
 		HttpOnly: true,
 		Secure:   isProd,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 	}
 	http.SetCookie(w, &cookie)
 }
