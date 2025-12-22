@@ -144,11 +144,14 @@ func (s *Server) CORSMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-func (s *Server) RateLimit(limit int, window time.Duration) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-			s.AuthMiddleware.RateLimitHandler(next, &pkg.RedisQueue{}, limit, window).ServeHTTP(w, r)
-		})
-	}
+
+func (s *Server) RateLimit(limit int, window time.Duration) func(http.Handler) http.Handler {
+    return func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            queueInstance := s.RedisSvc.(*pkg.RedisQueue)
+            
+            s.AuthMiddleware.RateLimitHandler(next, queueInstance, limit, window).ServeHTTP(w, r)
+        })
+    }
 }
