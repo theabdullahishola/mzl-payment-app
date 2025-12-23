@@ -34,34 +34,37 @@ var (
 type authService struct {
 	userRepo repository.UserRepository
 	config   *config.Config
-	redis    QueueService 
+	redis    QueueService
 }
 
 type UserCacheDTO struct {
-    ID        string    `json:"id"`
-    Email     string    `json:"email"`
-    FullName  string    `json:"name"` // Ensure this matches the Prisma field name (usually 'name')
-    CreatedAt time.Time `json:"createdAt"`
+	ID             string    `json:"id"`
+	Email          string    `json:"email"`
+	FullName       string    `json:"name"` // Ensure this matches the Prisma field name (usually 'name')
+	CreatedAt      time.Time `json:"createdAt"`
+	TransactionPin string    `json:"transaction_pin"`
 }
 
 func toUserCache(u *db.UserModel) UserCacheDTO {
-    return UserCacheDTO{
-        ID:        u.ID,
-        Email:     u.Email,
-        FullName:  u.Name,
-    }
+	pin, _ := u.TransactionPin()
+	return UserCacheDTO{
+		ID:             u.ID,
+		FullName:       u.Name,
+		Email:          u.Email,
+		TransactionPin: pin,
+	}
 }
 
 func fromUserCache(c UserCacheDTO) *db.UserModel {
-    data, _ := json.Marshal(c)
-    
-    var user db.UserModel
-    _ = json.Unmarshal(data, &user)
-    
-    return &user
+	data, _ := json.Marshal(c)
+
+	var user db.UserModel
+	_ = json.Unmarshal(data, &user)
+
+	return &user
 }
-func NewAuthService(userRepo repository.UserRepository, cfg *config.Config, redis  QueueService ) AuthService {
-	return &authService{userRepo: userRepo, config: cfg, redis: redis,}
+func NewAuthService(userRepo repository.UserRepository, cfg *config.Config, redis QueueService) AuthService {
+	return &authService{userRepo: userRepo, config: cfg, redis: redis}
 }
 
 func (s *authService) Register(ctx context.Context, email, password, fullName string) (*db.UserModel, error) {
@@ -140,7 +143,7 @@ func (s *authService) RotateRefreshToken(ctx context.Context, oldRefreshToken st
 	}
 	if err := s.userRepo.RevokeRefreshToken(ctx, oldRefreshToken); err != nil {
 		return nil, err
-   }
+	}
 
 	err = s.userRepo.SaveRefreshToken(ctx, userID, newTokens.RefreshToken, time.Now().Add(time.Hour*24*7))
 	if err != nil {
@@ -154,21 +157,20 @@ func (s *authService) RevokeRefreshToken(ctx context.Context, oldRefreshToken st
 }
 func (s *authService) GetUserByID(ctx context.Context, userID string) (*db.UserModel, error) {
 	cacheKey := fmt.Sprintf("user_profile:%s", userID)
-    var cachedDTO UserCacheDTO
-    err := s.redis.Get(ctx, cacheKey, &cachedDTO)
+	var cachedDTO UserCacheDTO
+	err := s.redis.Get(ctx, cacheKey, &cachedDTO)
 	if err == nil {
-        return fromUserCache(cachedDTO), nil
-    }
-    
+		return fromUserCache(cachedDTO), nil
+	}
 
-    user, err := s.userRepo.FindUserByID(ctx, userID)
-    if err != nil {
-        return nil, err
-    }
+	user, err := s.userRepo.FindUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 
-    dto := toUserCache(user)
-    _ = s.redis.Set(ctx, cacheKey, dto, 30*time.Minute)
-	return user,nil
+	dto := toUserCache(user)
+	_ = s.redis.Set(ctx, cacheKey, dto, 30*time.Minute)
+	return user, nil
 
 }
 
@@ -200,6 +202,7 @@ func (s *authService) SetTransactionPin(ctx context.Context, userID, plainPin st
 		return err
 	}
 
-	// Save
+	cacheKey := fmt.Sprintf("user_profile:%s", userID)
+	s.redis.Delete(ctx, cacheKey)
 	return s.userRepo.UpdateTransactionPin(ctx, userID, string(hashedPin))
 }
