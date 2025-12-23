@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -56,12 +55,14 @@ func toUserCache(u *db.UserModel) UserCacheDTO {
 }
 
 func fromUserCache(c UserCacheDTO) *db.UserModel {
-	data, _ := json.Marshal(c)
-
-	var user db.UserModel
-	_ = json.Unmarshal(data, &user)
-
-	return &user
+    return &db.UserModel{
+        InnerUser: db.InnerUser{
+            ID:             c.ID,
+            Name:           c.FullName,
+            Email:          c.Email,
+            TransactionPin: &c.TransactionPin, 
+        },
+    }
 }
 func NewAuthService(userRepo repository.UserRepository, cfg *config.Config, redis QueueService) AuthService {
 	return &authService{userRepo: userRepo, config: cfg, redis: redis}
