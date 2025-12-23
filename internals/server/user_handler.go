@@ -34,7 +34,7 @@ func (s *Server) GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pin, ok := user.TransactionPin()
-	hasPin := ok && pin != ""
+	hasPin := ok && string(pin) != ""
 
 	response := UserProfileResponse{
 		ID:     user.ID,
