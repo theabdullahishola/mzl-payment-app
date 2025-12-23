@@ -34,7 +34,12 @@ func (s *Server) GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pin, ok := user.TransactionPin()
-	hasPin := ok && string(pin) != ""
+
+	fmt.Printf("DEBUG: UserID: %s | PinValue: '%s' | ExistsInDB: %v\n", user.ID, pin, ok)
+	hasPin := false
+	if ok && len(pin) > 0 {
+		hasPin = true
+	}
 
 	response := UserProfileResponse{
 		ID:     user.ID,
